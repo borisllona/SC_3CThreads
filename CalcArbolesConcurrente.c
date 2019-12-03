@@ -12,13 +12,14 @@ Grau Informàtica
 #include <unistd.h>
 #include <ConvexHull.h>
 #include <semaphore.h>
+#include <ctype.h>
 
 #define DMaxArboles 	25
 #define DMaximoCoste 999999
 #define S 10000
 #define DDebug 0
 #define DefaultThreads 3
-#define M 25000
+#define M 250000
 
   //////////////////////////
  // Estructuras de datos //
@@ -81,14 +82,13 @@ typedef enum {false, true} bool;
 
 TBosque ArbolesEntrada;
 TListaArboles OptimoParcial;
-int min_cost = 99999;
-int bestComb = 0;
+int min_cost = 99999, bestComb = 0,Mcomb = M;
 /* Mutex */
 pthread_mutex_t Mutex;
 pthread_cond_t CondPartial;
 pthread_barrier_t Barrera;
 sem_t SemMutex;
-clock_t tiempo_mas_lento;
+double tiempo_mas_lento;
 
 
   //////////////////////////
@@ -102,8 +102,8 @@ int cercaCostMinim(int d[], int *j);
 void OrdenarArboles();
 void CalcularCombinacionOptima(PtrRang Rangs);
 void mostrar_estadistiques();
-void mostrar_desbalanceo();
-void threadmeslent(clock_t t);
+void mostrar_desbalanceo(double tiempo);
+void threadmeslent(double time);
 int EvaluarCombinacionListaArboles(int Combinacion);
 int ConvertirCombinacionToArboles(int Combinacion, PtrListaArboles CombinacionArboles);
 int ConvertirCombinacionToArbolesTalados(int Combinacion, PtrListaArboles CombinacionArbolesTalados);
@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
 {
 	TListaArboles Optimo;
 	
-	if (argc<3 || argc>4)
-		printf("Error Argumentos. Usage: CalcArboles <Fichero_Entrada> <Max_threads> [<Fichero_Salida>]");
+	if (argc<3 || argc>5)
+		printf("Error Argumentos. Usage: CalcArboles <Fichero_Entrada> <Max_threads> [Combinaciones est. parciales (M)][<Fichero_Salida>]");
 
 	if (!LeerFicheroEntrada(argv[1]))
 	{
@@ -135,9 +135,11 @@ int main(int argc, char *argv[])
 		printf("Error CalcularCercaOptima.\n");
 		exit(1);
 	}
-
-	if (argc==3)
+	if (argc==4)
 	{
+		if(isdigit(argv[3])){
+			Mcomb = atoi(argv[3]);
+		}
 		if (!GenerarFicheroSalida(Optimo, "./Valla.res"))
 		{
 			printf("Error GenerarFicheroSalida.\n");
@@ -146,7 +148,10 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		if (!GenerarFicheroSalida(Optimo, argv[3]))
+		if(isdigit(argv[3])){
+			Mcomb = atoi(argv[3]);
+		}
+		if (!GenerarFicheroSalida(Optimo, argv[4]))
 		{
 			printf("Error GenerarFicheroSalida.\n");
 			exit(1);
@@ -219,7 +224,7 @@ bool GenerarFicheroSalida(TListaArboles Optimo, char *PathFicOut)
 
 	for(a=0;a<Optimo.NumArboles;a++)
 	{
-		// Escribir nmero arbol.
+		// Escribir numero arbol.
 		if (fprintf(FicOut, "%d ",ArbolesEntrada.Arboles[Optimo.Arboles[a]].IdArbol)<1)
 		{
 			perror("Escritura nmero �bol.");
@@ -443,8 +448,7 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 	CosteMejorCombinacion = Optimo->Coste;
 	for (Combinacion=PrimeraCombinacion; Combinacion<=UltimaCombinacion; Combinacion++)
 	{
-		clock_t t; 
-    	t = clock();
+    	clock_t start = clock();
 //    	printf("\tC%d -> \t",Combinacion);
 		Coste = EvaluarCombinacionListaArboles(Combinacion);
 		if ( Coste < CosteMejorCombinacion )
@@ -453,25 +457,25 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			MejorCombinacion = Combinacion;
 //      	printf("***");
 		}
-		if ((Combinacion%S)==0)
-		{
-			 ConvertirCombinacionToArbolesTalados(MejorCombinacion, &OptimoParcial);
-			 printf("\r[%d] OptimoParcial %d-> Coste %d, %d Arboles talados:", Combinacion, MejorCombinacion, CosteMejorCombinacion, OptimoParcial.NumArboles);
-			 MostrarArboles(OptimoParcial);
-		}
-		
 		cont++;
-		if(cont==M){
-			t = clock() - t;
+		if (cont==M)
+		{
+			ConvertirCombinacionToArbolesTalados(MejorCombinacion, &OptimoParcial);
+			printf("\r[%d] OptimoParcial %d-> Coste %d, %d Arboles talados:", Combinacion, MejorCombinacion, CosteMejorCombinacion, OptimoParcial.NumArboles);
+			MostrarArboles(OptimoParcial);
+
+			clock_t end = clock();
+			double cpu_time = ((double) (end - start)) / CLOCKS_PER_SEC;
     		mostrar_estadistiques();
-			cont=0;
+
 			pthread_mutex_lock(&Mutex);
-			threadmeslent(t);
+			threadmeslent(cpu_time);
 			pthread_mutex_unlock(&Mutex);
+
 			pthread_barrier_wait(&Barrera);
-			mostrar_desbalanceo();
+			mostrar_desbalanceo(cpu_time);
+			cont=0;
 		}
-//    printf("\n");
 	}
 	sem_wait(&SemMutex);
 	//*MejorCombinacion_ret=MejorCombinacion; //devolvemos un apuntador (actualizamos la variable de retorno a la buscada anteriormente)
@@ -486,14 +490,17 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 
 }
 void mostrar_estadistiques(){
+	
 
 }
-void mostrar_desbalanceo(){
-
+void mostrar_desbalanceo(double tiempo){
+	printf("El desbalanceo del hijo X es: %f \n",tiempo-tiempo_mas_lento);
 }
 
-void threadmeslent(clock_t t){
-
+void threadmeslent(double time){
+	if(time>tiempo_mas_lento){
+		tiempo_mas_lento = time;
+	}
 }
 
 int EvaluarCombinacionListaArboles(int Combinacion)
@@ -650,11 +657,6 @@ CalcularCosteCombinacion(TListaArboles CombinacionArboles)
 	return(CosteTotal);
 }
 
-
-
-
-
-
 void
 MostrarArboles(TListaArboles CombinacionArboles)
 {
@@ -663,7 +665,8 @@ MostrarArboles(TListaArboles CombinacionArboles)
 	for (a=0;a<CombinacionArboles.NumArboles;a++)
 		printf("%d ",ArbolesEntrada.Arboles[CombinacionArboles.Arboles[a]].IdArbol);
 
-  for (;a<ArbolesEntrada.NumArboles;a++)
-    printf("  ");  
+  	for (;a<ArbolesEntrada.NumArboles;a++)
+    	printf("  ");  
+	printf("\n");
 }
 	
