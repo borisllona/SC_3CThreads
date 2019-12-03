@@ -11,6 +11,7 @@ Grau Informàtica
 #include <pthread.h>
 #include <unistd.h>
 #include <ConvexHull.h>
+#include <semaphore.h>
 
 #define DMaxArboles 	25
 #define DMaximoCoste 999999
@@ -86,6 +87,7 @@ int bestComb = 0;
 pthread_mutex_t Mutex;
 pthread_cond_t CondPartial;
 pthread_barrier_t Barrera;
+sem_t SemMutex;
 
 
   //////////////////////////
@@ -97,7 +99,7 @@ bool GenerarFicheroSalida(TListaArboles optimo, char *PathFicOut);
 bool CalcularCercaOptima(PtrListaArboles Optimo, int argc, char *argv[]);
 int cercaCostMinim(int d[], int *j);
 void OrdenarArboles();
-int* CalcularCombinacionOptima(PtrRang Rangs);
+void CalcularCombinacionOptima(PtrRang Rangs);
 int EvaluarCombinacionListaArboles(int Combinacion);
 int ConvertirCombinacionToArboles(int Combinacion, PtrListaArboles CombinacionArboles);
 int ConvertirCombinacionToArbolesTalados(int Combinacion, PtrListaArboles CombinacionArbolesTalados);
@@ -289,6 +291,8 @@ bool CalcularCercaOptima(PtrListaArboles Optimo, int argc, char *argv[])
 	pthread_mutex_init(&Mutex,NULL);
 	pthread_cond_init(&CondPartial,NULL);
 	pthread_barrier_init(&Barrera,NULL,NumTotalThreads);
+	sem_init (&SemMutex,0,1);
+
 	/* C�culo �timo */
 	Optimo->NumArboles = 0;
 	Optimo->Coste = DMaximoCoste;
@@ -323,6 +327,7 @@ bool CalcularCercaOptima(PtrListaArboles Optimo, int argc, char *argv[])
 	pthread_mutex_destroy(&Mutex);
 	pthread_cond_destroy(&CondPartial);
 	pthread_barrier_destroy(&Barrera);
+	sem_destroy(&SemMutex);
 
 	printf("\n");
 	printf("Evaluacion Combinaciones posibles: \n");
@@ -451,15 +456,14 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			
 //    printf("\n");
 	}
-	pthread_mutex_lock(&Mutex);
-	
+	sem_wait(&SemMutex);
 	//*MejorCombinacion_ret=MejorCombinacion; //devolvemos un apuntador (actualizamos la variable de retorno a la buscada anteriormente)
 	if (CosteMejorCombinacion<min_cost)
 	{
 		min_cost = CosteMejorCombinacion;
 		bestComb = MejorCombinacion;
 	}
-	pthread_mutex_unlock(&Mutex);
+	sem_post(&SemMutex);
 	pthread_barrier_wait(&Barrera);
 	//pthread_exit(MejorCombinacion_ret); //el thread termina y devuelve el puntero a la variable solucion
 
