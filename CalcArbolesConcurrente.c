@@ -18,7 +18,7 @@ Grau Informàtica
 #define S 10000
 #define DDebug 0
 #define DefaultThreads 3
-
+#define M 25000
 
   //////////////////////////
  // Estructuras de datos //
@@ -88,6 +88,7 @@ pthread_mutex_t Mutex;
 pthread_cond_t CondPartial;
 pthread_barrier_t Barrera;
 sem_t SemMutex;
+clock_t tiempo_mas_lento;
 
 
   //////////////////////////
@@ -100,6 +101,9 @@ bool CalcularCercaOptima(PtrListaArboles Optimo, int argc, char *argv[]);
 int cercaCostMinim(int d[], int *j);
 void OrdenarArboles();
 void CalcularCombinacionOptima(PtrRang Rangs);
+void mostrar_estadistiques();
+void mostrar_desbalanceo();
+void threadmeslent(clock_t t);
 int EvaluarCombinacionListaArboles(int Combinacion);
 int ConvertirCombinacionToArboles(int Combinacion, PtrListaArboles CombinacionArboles);
 int ConvertirCombinacionToArbolesTalados(int Combinacion, PtrListaArboles CombinacionArbolesTalados);
@@ -249,7 +253,6 @@ bool GenerarFicheroSalida(TListaArboles Optimo, char *PathFicOut)
 
 
 }
-
 
 
 bool CalcularCercaOptima(PtrListaArboles Optimo, int argc, char *argv[])
@@ -424,10 +427,11 @@ void OrdenarArboles()
 
 void CalcularCombinacionOptima(PtrRang Rangs) 
 {
+	/*TODO: mostrar estadisties, per parametre M, parcials, desbalanceo(guardar el mes lent i restar), implementar condicionals*/
 
 	int Combinacion,  CosteMejorCombinacion, PrimeraCombinacion, UltimaCombinacion;
 	int  MejorCombinacion=0,*MejorCombinacion_ret = malloc(sizeof(int));
-	int Coste;
+	int Coste, cont=0;
 	PtrListaArboles Optimo;
 	TListaArboles OptimoParcial;
 	int NumArboles;
@@ -439,6 +443,8 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 	CosteMejorCombinacion = Optimo->Coste;
 	for (Combinacion=PrimeraCombinacion; Combinacion<=UltimaCombinacion; Combinacion++)
 	{
+		clock_t t; 
+    	t = clock();
 //    	printf("\tC%d -> \t",Combinacion);
 		Coste = EvaluarCombinacionListaArboles(Combinacion);
 		if ( Coste < CosteMejorCombinacion )
@@ -453,7 +459,18 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			 printf("\r[%d] OptimoParcial %d-> Coste %d, %d Arboles talados:", Combinacion, MejorCombinacion, CosteMejorCombinacion, OptimoParcial.NumArboles);
 			 MostrarArboles(OptimoParcial);
 		}
-			
+		
+		cont++;
+		if(cont==M){
+			t = clock() - t;
+    		mostrar_estadistiques();
+			cont=0;
+			pthread_mutex_lock(&Mutex);
+			threadmeslent(t);
+			pthread_mutex_unlock(&Mutex);
+			pthread_barrier_wait(&Barrera);
+			mostrar_desbalanceo();
+		}
 //    printf("\n");
 	}
 	sem_wait(&SemMutex);
@@ -464,12 +481,20 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 		bestComb = MejorCombinacion;
 	}
 	sem_post(&SemMutex);
-	pthread_barrier_wait(&Barrera);
+	
 	//pthread_exit(MejorCombinacion_ret); //el thread termina y devuelve el puntero a la variable solucion
 
 }
+void mostrar_estadistiques(){
 
+}
+void mostrar_desbalanceo(){
 
+}
+
+void threadmeslent(clock_t t){
+
+}
 
 int EvaluarCombinacionListaArboles(int Combinacion)
 {
