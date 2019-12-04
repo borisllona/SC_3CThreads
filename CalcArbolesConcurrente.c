@@ -1,9 +1,9 @@
 /* ---------------------------------------------------------------
-Práctica 1.
+Práctica 3.
 Código fuente: CalcArbolesConcurrente.c
 Grau Informàtica
 78098453K - Marc Junyent Moreno
-41624352X - Francesc Gaya Piña
+48053932D - Boris Llona Alonso
 --------------------------------------------------------------- */
 #include <stdlib.h>
 #include <stdio.h>
@@ -66,6 +66,7 @@ struct TRang //Estructura Rangos asignados a un thread
 	long int inici;
 	long int final;
 	PtrListaArboles ArbresOpt;
+	int numThread;
 };
 typedef struct TRang TRang, *PtrRang;
 
@@ -89,7 +90,7 @@ pthread_cond_t CondPartial;
 pthread_barrier_t Barrera;
 sem_t SemMutex;
 double tiempo_mas_lento;
-
+int numThreadLento;
 
   //////////////////////////
  // Prototipos funciones //
@@ -102,8 +103,8 @@ int cercaCostMinim(int d[], int *j);
 void OrdenarArboles();
 void CalcularCombinacionOptima(PtrRang Rangs);
 void mostrar_estadistiques();
-void mostrar_desbalanceo(double tiempo);
-void threadmeslent(double time);
+void mostrar_desbalanceo(double tiempo, int numThread);
+void threadmeslent(double time, int numThread);
 int EvaluarCombinacionListaArboles(int Combinacion);
 int ConvertirCombinacionToArboles(int Combinacion, PtrListaArboles CombinacionArboles);
 int ConvertirCombinacionToArbolesTalados(int Combinacion, PtrListaArboles CombinacionArbolesTalados);
@@ -308,6 +309,7 @@ bool CalcularCercaOptima(PtrListaArboles Optimo, int argc, char *argv[])
 
 	for(thread = 0; thread < NumTotalThreads; thread++){ //creamos n threads
 		Rangs[thread].ArbresOpt = Optimo;
+		Rangs[thread].numThread = thread;
 		if (thread < (NumTotalThreads-1)){
 			Rangs[thread].final = Rangs[thread].inici + (CombinacionesThread-1);
 		}else{
@@ -435,19 +437,23 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 	/*TODO: mostrar estadisties, per parametre M, parcials, desbalanceo(guardar el mes lent i restar), implementar condicionals*/
 
 	int Combinacion,  CosteMejorCombinacion, PrimeraCombinacion, UltimaCombinacion;
-	int  MejorCombinacion=0,*MejorCombinacion_ret = malloc(sizeof(int));
+	int  MejorCombinacion=0;
 	int Coste, cont=0;
 	PtrListaArboles Optimo;
 	TListaArboles OptimoParcial;
-	int NumArboles;
+	int NumArboles, numThread;
 
 	PrimeraCombinacion = Rangs -> inici; //guarda el valor d'inici del thread
 	UltimaCombinacion = Rangs -> final; //guarda el valor de final del thread
 	Optimo = Rangs->ArbresOpt; //guarda a optimo l'estructura d'arbres de l'estructura Rangs
-
+	numThread = Rangs->numThread;
 	CosteMejorCombinacion = Optimo->Coste;
+
 	for (Combinacion=PrimeraCombinacion; Combinacion<=UltimaCombinacion; Combinacion++)
 	{
+		/*pthread_mutex_lock(&Mutex);
+    	tiempo_mas_lento = 0;
+    	pthread_mutex_unlock(&Mutex);*/
     	clock_t start = clock();
 //    	printf("\tC%d -> \t",Combinacion);
 		Coste = EvaluarCombinacionListaArboles(Combinacion);
@@ -460,25 +466,39 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 		cont++;
 		if (cont==M)
 		{
+			
 			ConvertirCombinacionToArbolesTalados(MejorCombinacion, &OptimoParcial);
 			printf("\r[%d] OptimoParcial %d-> Coste %d, %d Arboles talados:", Combinacion, MejorCombinacion, CosteMejorCombinacion, OptimoParcial.NumArboles);
 			MostrarArboles(OptimoParcial);
 
+
 			clock_t end = clock();
 			double cpu_time = ((double) (end - start)) / CLOCKS_PER_SEC;
-    		mostrar_estadistiques();
-
 			pthread_mutex_lock(&Mutex);
-			threadmeslent(cpu_time);
+			threadmeslent(cpu_time, numThread);
 			pthread_mutex_unlock(&Mutex);
 
+
+    		mostrar_estadistiques();
 			pthread_barrier_wait(&Barrera);
-			mostrar_desbalanceo(cpu_time);
+
+			
+			pthread_mutex_lock(&Mutex);
+			mostrar_desbalanceo(cpu_time, numThread);
+			pthread_mutex_unlock(&Mutex);
+
+			pthread_mutex_lock(&Mutex);
+			pthread_cond_broadcast(&CondPartial);
+			if(tiempo_mas_lento!=0){
+				pthread_cond_wait(&CondPartial,&Mutex);
+			}
+			tiempo_mas_lento = 0;
+			pthread_mutex_unlock(&Mutex);
 			cont=0;
 		}
 	}
 	sem_wait(&SemMutex);
-	//*MejorCombinacion_ret=MejorCombinacion; //devolvemos un apuntador (actualizamos la variable de retorno a la buscada anteriormente)
+
 	if (CosteMejorCombinacion<min_cost)
 	{
 		min_cost = CosteMejorCombinacion;
@@ -486,20 +506,23 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 	}
 	sem_post(&SemMutex);
 	
-	//pthread_exit(MejorCombinacion_ret); //el thread termina y devuelve el puntero a la variable solucion
-
 }
 void mostrar_estadistiques(){
 	
 
 }
-void mostrar_desbalanceo(double tiempo){
-	printf("El desbalanceo del hijo X es: %f \n",tiempo-tiempo_mas_lento);
+void mostrar_desbalanceo(double tiempo, int numThread){
+	printf("EL TIEMPO MAS LENTO ES %f del thread %i\n", tiempo_mas_lento, numThreadLento);
+	printf("EL TIEMPO ES %f del thread %i\n", tiempo, numThread);
+	printf("El desbalanceo del hijo %i respeto el thread más lento %i es: %f \n",numThread,numThreadLento, tiempo-tiempo_mas_lento);
+
 }
 
-void threadmeslent(double time){
+void threadmeslent(double time, int numThread){
 	if(time>tiempo_mas_lento){
 		tiempo_mas_lento = time;
+		numThreadLento = numThread;
+		//pthread_cond_signal(&CondPartial);
 	}
 }
 
