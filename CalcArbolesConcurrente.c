@@ -436,8 +436,8 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 {
 	/*TODO: mostrar estadisties, per parametre M, parcials, desbalanceo(guardar el mes lent i restar), implementar condicionals*/
 
-	int Combinacion,  CosteMejorCombinacion, PrimeraCombinacion, UltimaCombinacion;
-	int  MejorCombinacion=0;
+	int Combinacion,  CosteMejorCombinacion, CostePeorCombinacion,PrimeraCombinacion, UltimaCombinacion;
+	int  MejorCombinacion=0, PeorCombinacion=0;
 	int Coste, cont=0;
 	PtrListaArboles Optimo;
 	TListaArboles OptimoParcial;
@@ -448,10 +448,12 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 	Optimo = Rangs->ArbresOpt; //guarda a optimo l'estructura d'arbres de l'estructura Rangs
 	numThread = Rangs->numThread;
 	CosteMejorCombinacion = Optimo->Coste;
+	CostePeorCombinacion = Optimo->Coste;
 
 	for (Combinacion=PrimeraCombinacion; Combinacion<=UltimaCombinacion; Combinacion++)
 	{
-		/*pthread_mutex_lock(&Mutex);
+
+		/*pthread_mutex_lock(&Mutex);                             //ESTES LINEES QUE SON?
     	tiempo_mas_lento = 0;
     	pthread_mutex_unlock(&Mutex);*/
     	clock_t start = clock();
@@ -462,7 +464,11 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			CosteMejorCombinacion = Coste;
 			MejorCombinacion = Combinacion;
 //      	printf("***");
+		}else if(Coste>CostePeorCombinacion){
+			CostePeorCombinacion = Coste;
+			PeorCombinacion = Combinacion;
 		}
+
 		cont++;
 		if (cont==M)
 		{
@@ -479,7 +485,7 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			pthread_mutex_unlock(&Mutex);
 
 
-    		mostrar_estadistiques();
+    		mostrar_estadistiques(numThread,Combinacion-PrimeraCombinacion,MejorCombinacion,PeorCombinacion);
 			pthread_barrier_wait(&Barrera);
 
 			
@@ -507,10 +513,19 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 	sem_post(&SemMutex);
 	
 }
-void mostrar_estadistiques(){
-	
-
+void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor){
+	printf("THREAD N%i",numThread);
+	printf("Numero de combinaciones evaluadas = %f\n",evalued);
+	printf("Numero de combinaciones no validas = %f\n"); //Que vol dir que una combinació sigui valida?
+	printf("Numero de combinaciones validas = %f\n");
+	printf("Coste promedio de las combinaciones validas = %f\n");
+	printf("Mejor combinación (coste arboles) = %f\n",mejor);
+	printf("Peor combinación (coste arboles) = %f\n",peor);
+	printf("Mejor combinación (numero de arboles talados) = %f\n");//?
+	printf("Peor combinación (numero de arboles talados) = %f\n");
+	printf("\n");
 }
+
 void mostrar_desbalanceo(double tiempo, int numThread){
 	printf("EL TIEMPO MAS LENTO ES %f del thread %i\n", tiempo_mas_lento, numThreadLento);
 	printf("EL TIEMPO ES %f del thread %i\n", tiempo, numThread);
