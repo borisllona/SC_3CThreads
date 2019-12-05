@@ -480,18 +480,17 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 
 
     		mostrar_estadistiques();
-			pthread_barrier_wait(&Barrera);
 
-			
 			pthread_mutex_lock(&Mutex);
 			mostrar_desbalanceo(cpu_time, numThread);
 			pthread_mutex_unlock(&Mutex);
+			pthread_barrier_wait(&Barrera);
 
 			pthread_mutex_lock(&Mutex);
-			pthread_cond_broadcast(&CondPartial);
+			/*pthread_cond_broadcast(&CondPartial);
 			if(tiempo_mas_lento!=0){
 				pthread_cond_wait(&CondPartial,&Mutex);
-			}
+			}*/
 			tiempo_mas_lento = 0;
 			pthread_mutex_unlock(&Mutex);
 			cont=0;
