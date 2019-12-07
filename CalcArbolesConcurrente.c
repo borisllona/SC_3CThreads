@@ -18,6 +18,7 @@ Grau Informàtica
 #define S 10000
 #define DDebug 0
 #define DefaultThreads 3
+#define M 250000
 
   //////////////////////////
  // Estructuras de datos //
@@ -81,7 +82,7 @@ typedef enum {false, true} bool;
 
 TBosque ArbolesEntrada;
 TListaArboles OptimoParcial;
-int min_cost = 99999, bestComb = 0, M = 2500000;
+int min_cost = 99999, bestComb = 0,Mcomb = M;
 /* Mutex */
 pthread_mutex_t Mutex;
 pthread_cond_t CondPartial;
@@ -119,7 +120,7 @@ void MostrarArboles(TListaArboles CombinacionArboles);
 int main(int argc, char *argv[])
 {
 	TListaArboles Optimo;
-
+	
 	if (argc<3 || argc>5)
 		printf("Error Argumentos. Usage: CalcArboles <Fichero_Entrada> <Max_threads> [Combinaciones est. parciales (M)][<Fichero_Salida>]");
 
@@ -128,26 +129,30 @@ int main(int argc, char *argv[])
 		printf("Error lectura fichero entrada.\n");
 		exit(1);
 	}
-	if (argc>3)
-	{
-		M = atoi(argv[3]);
-	}
 
-	if(argc>4)
+
+	/*if (argc==4)
 	{
-		if (!GenerarFicheroSalida(Optimo, argv[4]))
-		{
-			printf("Error GenerarFicheroSalida.\n");
-			exit(1);
+		if(isdigit(argv[3])){
+			Mcomb = atoi(argv[3]);
 		}
-	}else{
 		if (!GenerarFicheroSalida(Optimo, "./Valla.res"))
 		{
 			printf("Error GenerarFicheroSalida.\n");
 			exit(1);
 		}
 	}
-
+	else
+	{
+		if(isdigit(argv[3])){
+			Mcomb = atoi(argv[3]);
+		}
+		if (!GenerarFicheroSalida(Optimo, argv[4]))
+		{
+			printf("Error GenerarFicheroSalida.\n");
+			exit(1);
+		}
+	}*/
 	if (!CalcularCercaOptima(&Optimo, argc, argv))
 	{
 		
@@ -475,7 +480,7 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 
 			pthread_barrier_wait(&Barrera); //Esperamos a que todos los threads lleguen a la barrera para seguir
 	
-			sem_wait(&SemMutex); //sincronizamos con un semaforo para ractualizar la variable global de tiempo_mas_lento de los threads
+			sem_wait(&SemMutex); //sincronizamos con un semaforo para ractualizar la variable global de tiempo_mas_lento
 			tiempo_mas_lento = 0;	
 			sem_post(&SemMutex);
 			
