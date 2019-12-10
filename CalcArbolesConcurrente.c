@@ -83,6 +83,11 @@ typedef enum {false, true} bool;
 TBosque ArbolesEntrada;
 TListaArboles OptimoParcial;
 int min_cost = 99999, bestComb = 0,Mcomb = M;
+<<<<<<< HEAD
+=======
+int NumTotalThreads=0;
+
+>>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 /* Mutex */
 pthread_mutex_t Mutex;
 pthread_cond_t CondPartial;
@@ -114,21 +119,24 @@ int CalcularMaderaArbolesTalados(TListaArboles CombinacionArboles);
 int CalcularCosteCombinacion(TListaArboles CombinacionArboles);
 void MostrarArboles(TListaArboles CombinacionArboles);
 
-
-
-
 int main(int argc, char *argv[])
 {
 	TListaArboles Optimo;
 	
+<<<<<<< HEAD
 	if (argc<2 || argc>5)
 		printf("Error Argumentos. Usage: CalcArboles <Fichero_Entrada> [<Est_Parciales>] [<Fichero_Salida>]");
+=======
+	if (argc<3 || argc>5)
+		printf("Error Argumentos. Usage: CalcArboles <Fichero_Entrada> <Max_threads> [Combinaciones est. parciales (M)][<Fichero_Salida>]");
+>>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 
 	if (!LeerFicheroEntrada(argv[1]))
 	{
 		printf("Error lectura fichero entrada.\n");
 		exit(1);
 	}
+<<<<<<< HEAD
 	if (argc>2)
 		NumTotalThreads = atoi(argv[2]);
 	else 
@@ -147,20 +155,51 @@ int main(int argc, char *argv[])
 
 	if (argc<5)
 	{
+=======
+	
+	if(argc > 2){
+		NumTotalThreads = atoi(argv[2]); //Almacenamos numero threads introducido como parametro
+	}else{
+		NumTotalThreads = DefaultThreads;
+	}
+	if (argc==4)
+	{
+		if(isdigit(argv[3])){
+			Mcomb = atoi(argv[3]);
+		}
+>>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 		if (!GenerarFicheroSalida(Optimo, "./Valla.res"))
 		{
 			printf("Error GenerarFicheroSalida.\n");
 			exit(1);
 		}
 	}
+<<<<<<< HEAD
 	else
 	{
+=======
+	if (argc == 5)
+	{
+		if(isdigit(argv[3])){
+			Mcomb = atoi(argv[3]);
+		}
+>>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 		if (!GenerarFicheroSalida(Optimo, argv[4]))
 		{
 			printf("Error GenerarFicheroSalida.\n");
 			exit(1);
 		}
 	}
+<<<<<<< HEAD
+=======
+	if (!CalcularCercaOptima(&Optimo, argc, argv))
+	{
+		
+		printf("Error CalcularCercaOptima.\n");
+		exit(1);
+
+	}
+>>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 	exit(0);
 }
 
@@ -267,15 +306,22 @@ bool GenerarFicheroSalida(TListaArboles Optimo, char *PathFicOut)
 bool CalcularCercaOptima(PtrListaArboles Optimo)
 {
 	int MaxCombinaciones=0, NumArboles=0;
+<<<<<<< HEAD
 	int  CombinacionesThread, thread, PuntosCerca;
+=======
+	int CombinacionesThread, thread, PuntosCerca;
+>>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 	pthread_t *Tids;
 	PtrRang Rangs;
 	TListaArboles CombinacionArboles;
 	TVectorCoordenadas CoordArboles, CercaArboles;
 	float MaderaArbolesTalados;
 	//int *combParcial = malloc(sizeof(int));//Valor retornado por cada thread
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 	//int combParciales[NumTotalThreads];
 	//�culo Máximo Combinaciones */
 	MaxCombinaciones = (int) pow(2.0,ArbolesEntrada.NumArboles);
@@ -451,11 +497,19 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 
 			CostePeorCombinacion = Coste;
 			PeorCombinacion = Combinacion;
+
 		}
+<<<<<<< HEAD
 		//printf("PEOR COMBINACION COSTE %i combinacion num %i\n", CostePeorCombinacion, PeorCombinacion);
+=======
+>>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 		cont++;
 		if (cont==Mcomb) //si el thread llega a la combinación M, mostrar estadisticas y desbalanceo
 		{
+<<<<<<< HEAD
+=======
+
+>>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 			ConvertirCombinacionToArbolesTalados(MejorCombinacion, &OptimoParcial);
 			//printf("\r[%d] OptimoParcial %d-> Coste %d, %d Arboles talados:", Combinacion, MejorCombinacion, CosteMejorCombinacion, OptimoParcial.NumArboles);
 			//MostrarArboles(OptimoParcial);
@@ -511,8 +565,8 @@ void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int val
 }
 
 void mostrar_desbalanceo(double tiempo, int numThread){
-	printf("EL TIEMPO MAS LENTO ES %f del thread %i\n", tiempo_mas_lento, numThreadLento);
-	printf("EL TIEMPO ES %f del thread %i\n", tiempo, numThread);
+	//printf("EL TIEMPO MAS LENTO ES %f del thread %i\n", tiempo_mas_lento, numThreadLento);
+	//printf("EL TIEMPO ES %f del thread %i\n", tiempo, numThread);
 	printf("El desbalanceo del hijo %i respeto el thread más lento %i es: %f \n",numThread,numThreadLento, tiempo-tiempo_mas_lento);
 	printf("\n");
 
@@ -530,7 +584,11 @@ int EvaluarCombinacionListaArboles(int Combinacion, int *numCombValidas, int *co
 {
 	TVectorCoordenadas CoordArboles, CercaArboles;
 	TListaArboles CombinacionArboles, CombinacionArbolesTalados;
+<<<<<<< HEAD
 	int NumArboles, NumArbolesTalados, PuntosCerca, CosteCombinacion, combValidas=*numCombValidas, costeVal=*costeCombValidas;
+=======
+	int NumArboles, NumArbolesTalados, PuntosCerca, CosteCombinacion, combValidas=*numCombValidas, costeVal = *costeCombValidas;
+>>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 	float LongitudCerca, MaderaArbolesTalados;
 
 	// Convertimos la combinacin al vector de arboles no talados.
