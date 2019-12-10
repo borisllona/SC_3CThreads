@@ -83,11 +83,7 @@ typedef enum {false, true} bool;
 TBosque ArbolesEntrada;
 TListaArboles OptimoParcial;
 int min_cost = 99999, bestComb = 0,Mcomb = M;
-<<<<<<< HEAD
-=======
-int NumTotalThreads=0;
 
->>>>>>> b42b99c186b606e3353343a5b988e95583a18ee4
 /* Mutex */
 pthread_mutex_t Mutex;
 pthread_cond_t CondPartial;
@@ -271,8 +267,6 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 	int MaxCombinaciones=0, NumArboles=0;
 
 	int  CombinacionesThread, thread, PuntosCerca;
-
-	int CombinacionesThread, thread, PuntosCerca;
 	pthread_t *Tids;
 	PtrRang Rangs;
 	TListaArboles CombinacionArboles;
@@ -538,8 +532,6 @@ int EvaluarCombinacionListaArboles(int Combinacion, int *numCombValidas, int *co
 	TListaArboles CombinacionArboles, CombinacionArbolesTalados;
 
 	int NumArboles, NumArbolesTalados, PuntosCerca, CosteCombinacion, combValidas=*numCombValidas, costeVal=*costeCombValidas;
-
-	int NumArboles, NumArbolesTalados, PuntosCerca, CosteCombinacion, combValidas=*numCombValidas, costeVal = *costeCombValidas;
 
 	float LongitudCerca, MaderaArbolesTalados;
 
