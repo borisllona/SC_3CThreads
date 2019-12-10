@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 	{
 		printf("Error lectura fichero entrada.\n");
 		exit(1);
-	}
+	}/*
 	if (argc>3)
 	{
 		M = atoi(argv[3]);
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 			printf("Error GenerarFicheroSalida.\n");
 			exit(1);
 		}
-	}
+	}*/
 
 	if (!CalcularCercaOptima(&Optimo, argc, argv))
 	{
