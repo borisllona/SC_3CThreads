@@ -99,9 +99,9 @@ int NumTotalThreads=0;
 
 
 //Estadisticas globales//
-int GlobEstCombinaciones, GlobEstCombValidas, GlobEstCombInvalidas;
-long GlobEstCosteTotal;
-int GlobEstMejorCosteCombinacion = DMaximoCoste, GlobEstPeorCosteCombinacion, GlobEstMejorArboles, GlobEstMejorArbolesCombinacion, GlobEstPeorArboles=0, GlobEstPeorArbolesCombinacion;
+int GlobEstCombinaciones=0, GlobEstCombValidas=0, GlobEstCombInvalidas=0;
+long GlobEstCosteTotal=0;
+int GlobEstMejorCosteCombinacion = DMaximoCoste, GlobEstPeorCosteCombinacion=0, GlobEstMejorArboles=0, GlobEstMejorArbolesCombinacion=0, GlobEstPeorArboles=0, GlobEstPeorArbolesCombinacion=0;
 float GlobEstMejorCoste=DMaximoCoste, GlobEstPeorCoste=0;
 
   //////////////////////////
@@ -442,6 +442,7 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 	TListaArboles OptimoParcial;
 	int NumArboles, numThread, numCombValidas=0, costeTotal=0, costeCombValidas=0, mejoresArboles=9999, mejorArbolesComb=0;
 	int peorArboles=0, peorArbolesComb=0;
+	int mostrarGlobals = 0; 
 	PrimeraCombinacion = Rangs -> inici; //guarda el valor d'inici del thread
 	UltimaCombinacion = Rangs -> final; //guarda el valor de final del thread
 	Optimo = Rangs->ArbresOpt; //guarda a optimo l'estructura d'arbres de l'estructura Rangs
@@ -449,7 +450,9 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 	CosteMejorCombinacion = Optimo->Coste;
 	CostePeorCombinacion = 0; // ??????????????????????? l'he inicialitzat a 0 pq sino no entrave al if de sota
 	//CostePeorCombinacion = Optimo->Coste;
-
+	if(numThread==0){
+		mostrarGlobals = 1;
+	}
 	for (Combinacion=PrimeraCombinacion; Combinacion<=UltimaCombinacion; Combinacion++)
 	{
 
@@ -481,10 +484,11 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			pthread_mutex_lock(&Mutex);
 			actualizar_est_globales(MejorCombinacion,PeorCombinacion,numCombValidas, costeCombValidas, CostePeorCombinacion, CosteMejorCombinacion, \
     			mejoresArboles, mejorArbolesComb, peorArboles, peorArbolesComb);
-			mostrar_estadistiques_globales();
 			pthread_mutex_unlock(&Mutex);
-
+			//pthread_barrier_wait(&Barrera);
 			//ConvertirCombinacionToArbolesTalados(MejorCombinacion, &OptimoParcial);
+	
+
 
 			clock_t end = clock();	//final del tiempo que ha tardado el thread en realizar las tareas.
 			double cpu_time = ((double) (end - start)) / CLOCKS_PER_SEC;
@@ -492,6 +496,19 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			pthread_mutex_lock(&Mutex);
 			threadmeslent(cpu_time, numThread);
 			pthread_mutex_unlock(&Mutex);
+
+
+			pthread_mutex_lock(&Mutex);
+			if(numThread==0){
+				printf("Soc el fill numero i soc el que mana %i\n", numThread);
+				mostrar_estadistiques_globales();
+				pthread_cond_broadcast(&CondPartial);				
+			}else{
+				printf("Soc el fill numero i m'estic esperant %i\n", numThread);
+				pthread_cond_wait(&CondPartial,&Mutex);
+			}
+			pthread_mutex_unlock(&Mutex);
+			
 			pthread_barrier_wait(&Barrera);
 
 			pthread_mutex_lock(&Mutex);
@@ -499,9 +516,12 @@ void CalcularCombinacionOptima(PtrRang Rangs)
     			mejoresArboles, mejorArbolesComb, peorArboles, peorArbolesComb);
 			mostrar_desbalanceo(cpu_time, numThread);
 			pthread_mutex_unlock(&Mutex);
-
 			pthread_barrier_wait(&Barrera); //Esperamos a que todos los threads lleguen a la barrera para seguir
-	
+
+
+			
+			//pthread_barrier_wait(&Barrera); //Esperamos a que todos los threads lleguen a la barrera para seguir
+
 			sem_wait(&SemMutex); //sincronizamos con un semaforo para ractualizar la variable global de tiempo_mas_lento
 			tiempo_mas_lento = 0;	
 			sem_post(&SemMutex);
@@ -560,6 +580,7 @@ void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int val
 	
 }
 int mostrar_estadistiques_globales(){
+	sleep(1);
 	printf("++++++++++++++++++++++++++++ESTADISTICAS GLOBAAAAAALES THREAD NUMERO +++++++++++++++++++++++++++++++\n");
 	printf("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
 	//printf("++ Eval Comb: %d \tValidas: %d \tInvalidas: %d\tCoste Validas: %.3f\n", GlobEstCombinaciones, GlobEstCombValidas, GlobEstCombInvalidas, (float)EstCosteTotal/(float)EstCombValidas);
