@@ -384,7 +384,7 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 	free(Tids); //Liberear memoria Tids 
 	free(Rangs); //Liberar memoria Rangs
 	//free(combParcial);
-
+	mostrar_estadistiques_globales();
 	return true;
 }
 
@@ -472,6 +472,10 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			PeorCombinacion = Combinacion;
 
 		}
+
+		pthread_mutex_lock(&Mutex);
+		GlobEstCombinaciones++;
+		pthread_mutex_unlock(&Mutex);
 
 		if((Combinacion%S)==0){
 			ConvertirCombinacionToArbolesTalados(MejorCombinacion, &OptimoParcial);
@@ -574,10 +578,10 @@ void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int val
 	
 }
 int mostrar_estadistiques_globales(){
-	sleep(1);
+	sleep(1);GlobEstCombInvalidas = GlobEstCombinaciones - GlobEstCombValidas;
 	printf("++++++++++++++++++++++++++++ESTADISTICAS GLOBAAAAAALES THREAD NUMERO +++++++++++++++++++++++++++++++\n");
 	printf("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
-	//printf("++ Eval Comb: %d \tValidas: %d \tInvalidas: %d\tCoste Validas: %.3f\n", GlobEstCombinaciones, GlobEstCombValidas, GlobEstCombInvalidas, (float)EstCosteTotal/(float)EstCombValidas);
+	printf("++ Eval Comb: %d \tValidas: %d \tInvalidas: %d\tCoste Validas: %.3f\n", GlobEstCombinaciones, GlobEstCombValidas, GlobEstCombInvalidas, (float)3/(float)GlobEstCombValidas);
 	printf("++ Mejor Comb (coste): %d Coste: %.3f  \tPeor Comb (coste): %d Coste: %.3f\n",GlobEstMejorCosteCombinacion, GlobEstMejorCoste, GlobEstPeorCosteCombinacion, GlobEstPeorCoste);
 	printf("++ Mejor Comb (árboles): %d Arboles: %d  \tPeor Comb (árboles): %d Arboles %d\n",GlobEstMejorArbolesCombinacion, GlobEstMejorArboles, GlobEstPeorArbolesCombinacion, GlobEstPeorArboles);
 	printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
@@ -645,6 +649,9 @@ if (DDebug) printf("\tCoste:%d",CosteCombinacion);
 	combValidas++;
 	costeVal=costeVal+CosteCombinacion;
 
+	pthread_mutex_lock(&Mutex);
+	GlobEstCombValidas++;
+	pthread_mutex_unlock(&Mutex);
 	
 	if(NumArboles<mejArboles){
 		mejArboles = NumArboles;
