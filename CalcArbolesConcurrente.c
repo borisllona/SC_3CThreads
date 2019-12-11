@@ -485,11 +485,21 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			actualizar_est_globales(MejorCombinacion,PeorCombinacion,numCombValidas, costeCombValidas, CostePeorCombinacion, CosteMejorCombinacion, \
     			mejoresArboles, mejorArbolesComb, peorArboles, peorArbolesComb);
 			pthread_mutex_unlock(&Mutex);
-			//pthread_barrier_wait(&Barrera);
+
+			if(numThread==0){
+				printf("Soc el fill numero i soc el que mana %i\n", numThread);
+				mostrar_estadistiques_globales();
+				pthread_cond_broadcast(&CondPartial);		
+			}else{
+				pthread_mutex_lock(&Mutex);
+				printf("Soc el fill numero i m'estic esperant %i\n", numThread);
+				pthread_cond_wait(&CondPartial,&Mutex);
+				pthread_mutex_unlock(&Mutex);
+				
+			}
+			
 			//ConvertirCombinacionToArbolesTalados(MejorCombinacion, &OptimoParcial);
 	
-
-
 			clock_t end = clock();	//final del tiempo que ha tardado el thread en realizar las tareas.
 			double cpu_time = ((double) (end - start)) / CLOCKS_PER_SEC;
 
@@ -497,37 +507,21 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			threadmeslent(cpu_time, numThread);
 			pthread_mutex_unlock(&Mutex);
 
-
-			pthread_mutex_lock(&Mutex);
-			if(numThread==0){
-				printf("Soc el fill numero i soc el que mana %i\n", numThread);
-				mostrar_estadistiques_globales();
-				pthread_cond_broadcast(&CondPartial);				
-			}else{
-				printf("Soc el fill numero i m'estic esperant %i\n", numThread);
-				pthread_cond_wait(&CondPartial,&Mutex);
-			}
-			pthread_mutex_unlock(&Mutex);
-			
-			pthread_barrier_wait(&Barrera);
-
 			pthread_mutex_lock(&Mutex);
     		mostrar_estadistiques(numThread,Combinacion-PrimeraCombinacion+1,MejorCombinacion,PeorCombinacion,numCombValidas, costeCombValidas, CostePeorCombinacion, CosteMejorCombinacion, \
     			mejoresArboles, mejorArbolesComb, peorArboles, peorArbolesComb);
 			mostrar_desbalanceo(cpu_time, numThread);
 			pthread_mutex_unlock(&Mutex);
+
 			pthread_barrier_wait(&Barrera); //Esperamos a que todos los threads lleguen a la barrera para seguir
 
-
-			
-			//pthread_barrier_wait(&Barrera); //Esperamos a que todos los threads lleguen a la barrera para seguir
 
 			sem_wait(&SemMutex); //sincronizamos con un semaforo para ractualizar la variable global de tiempo_mas_lento
 			tiempo_mas_lento = 0;	
 			sem_post(&SemMutex);
 			
 
-			cont=0;
+			cont=0; //contador de numero de combinaciones a 0
 			
 		}
 	}
