@@ -99,10 +99,10 @@ int NumTotalThreads=0;
 
 
 //Estadisticas globales//
-int GlobEstCombinaciones=0, GlobEstCombValidas=0, GlobEstCombInvalidas=0;
-long GlobEstCosteTotal=0;
-int GlobEstMejorCosteCombinacion = DMaximoCoste, GlobEstPeorCosteCombinacion=0, GlobEstMejorArboles=0, GlobEstMejorArbolesCombinacion=0, GlobEstPeorArboles=0, GlobEstPeorArbolesCombinacion=0;
-float GlobEstMejorCoste=DMaximoCoste, GlobEstPeorCoste=0;
+int GlobEstCombinaciones, GlobEstCombValidas, GlobEstCombInvalidas;
+long GlobEstCosteTotal;
+int GlobEstMejorCosteCombinacion, GlobEstPeorCosteCombinacion, GlobEstMejorArboles, GlobEstMejorArbolesCombinacion, GlobEstPeorArboles, GlobEstPeorArbolesCombinacion;
+float GlobEstMejorCoste, GlobEstPeorCoste;
 
   //////////////////////////
  // Prototipos funciones //
@@ -114,15 +114,13 @@ bool CalcularCercaOptima(PtrListaArboles Optimo);
 int cercaCostMinim(int d[], int *j);
 void OrdenarArboles();
 void CalcularCombinacionOptima(PtrRang Rangs);
-void actualizar_est_globales(int mejor,int peor, int validas, int CosteTotal, int CostePeorCombinacion, int CosteMejorCombinacion, int mejorArboles,\
-	int mejorArbolesComb, int peorArboles, int peorArbolesComb);
 void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int validas, int CosteTotal, int PeorCombinacion, int MejorCombinacion, int mejoresArboles,\
 	int mejorArbolesComb, int peorArboles, int peorArbolesComp);
 int mostrar_estadistiques_globales();
 void mostrar_desbalanceo(double tiempo, int numThread);
 void threadmeslent(double time, int numThread);
 int EvaluarCombinacionListaArboles(int Combinacion, int *numCombValidas, int *costeCombValidas, int *mejoresArboles, int *mejorArbolesComb,\
-	int *peorArboles, int *peorArbolesComp);
+	int *peorArboles, int *peorArbolesComp, int *peorcomb, int *costepeorComb);
 int ConvertirCombinacionToArboles(int Combinacion, PtrListaArboles CombinacionArboles);
 int ConvertirCombinacionToArbolesTalados(int Combinacion, PtrListaArboles CombinacionArbolesTalados);
 void ObtenerListaCoordenadasArboles(TListaArboles CombinacionArboles, TVectorCoordenadas Coordenadas);
@@ -131,6 +129,7 @@ float CalcularDistancia(int x1, int y1, int x2, int y2);
 int CalcularMaderaArbolesTalados(TListaArboles CombinacionArboles);
 int CalcularCosteCombinacion(TListaArboles CombinacionArboles);
 void MostrarArboles(TListaArboles CombinacionArboles);
+void InicializarEstadisticas();
 
 int main(int argc, char *argv[])
 {
@@ -201,7 +200,6 @@ bool LeerFicheroEntrada(char *PathFicIn)
 		return false;
 	}
 	printf("\tÁrboles: %d.\n",ArbolesEntrada.NumArboles);
-	GlobEstMejorArboles = ArbolesEntrada.NumArboles;
 	// Leer atributos arboles.
 	for(a=0;a<ArbolesEntrada.NumArboles;a++)
 	{
@@ -297,7 +295,7 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 	CombinacionesThread = MaxCombinaciones/NumTotalThreads; //numero de combinaciones asignadas a cada thread
 	// Ordenar Arboles por segun coordenadas crecientes de x,y
 	OrdenarArboles();
-
+	InicializarEstadisticas();
 	Tids = malloc(sizeof(pthread_t)*NumTotalThreads);
 	if(Tids == NULL){
 		perror("Error en reserva de memoria tids.");
@@ -356,8 +354,8 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 	printf("Evaluacion Combinaciones posibles: \n");
 	int index = 0;
 	//min_cost = cercaCostMinim(combParciales, &index); //buscamos el minimo coste de todas las posibles soluciones de combParciales
-	int combOpt = bestComb; //la combinacion optima sera la que se encuentre en el index devuelto por la funcion cercaCostMin
-
+	int combOpt = GlobEstMejorCosteCombinacion; //la combinacion optima sera la que se encuentre en el index devuelto por la funcion cercaCostMin
+	int min_cost = GlobEstMejorCoste;
 
 	ConvertirCombinacionToArbolesTalados(combOpt, &OptimoParcial);
 	printf("\rOptimo %d-> Coste %d, %d Arboles talados:", combOpt, min_cost, OptimoParcial.NumArboles);
@@ -384,8 +382,25 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 	free(Tids); //Liberear memoria Tids 
 	free(Rangs); //Liberar memoria Rangs
 	//free(combParcial);
+	GlobEstCombValidas--;
 	mostrar_estadistiques_globales();
 	return true;
+}
+
+void InicializarEstadisticas()
+{
+	GlobEstCombinaciones=0;
+	GlobEstCombValidas=0; 
+	GlobEstCombInvalidas=0; 
+	GlobEstCosteTotal=0;
+	GlobEstMejorCosteCombinacion=DMaximoCoste;
+	GlobEstPeorCosteCombinacion=0;
+	GlobEstMejorArboles=ArbolesEntrada.NumArboles;
+	GlobEstPeorArboles=0;
+	GlobEstMejorArbolesCombinacion=0;
+	GlobEstPeorArbolesCombinacion=0;
+	GlobEstMejorCoste=DMaximoCoste;
+	GlobEstPeorCoste=0;
 }
 
 
@@ -435,47 +450,40 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 {
 	/*TODO: mostrar estadisties, per parametre M, parcials, desbalanceo(guardar el mes lent i restar), implementar condicionals*/
 
-	int Combinacion,  CosteMejorCombinacion, CostePeorCombinacion,PrimeraCombinacion, UltimaCombinacion;
+	int Combinacion,  CosteMejorCombinacion, CostePeorCombinacion=0,PrimeraCombinacion, UltimaCombinacion;
 	int  MejorCombinacion=0, PeorCombinacion=0;
 	int Coste, cont=0;
 	PtrListaArboles Optimo;
 	TListaArboles OptimoParcial;
 	int NumArboles, numThread, numCombValidas=0, costeTotal=0, costeCombValidas=0, mejoresArboles=9999, mejorArbolesComb=0;
 	int peorArboles=0, peorArbolesComb=0;
-	int mostrarGlobals = 0; 
 	PrimeraCombinacion = Rangs -> inici; //guarda el valor d'inici del thread
 	UltimaCombinacion = Rangs -> final; //guarda el valor de final del thread
 	Optimo = Rangs->ArbresOpt; //guarda a optimo l'estructura d'arbres de l'estructura Rangs
 	numThread = Rangs->numThread;
 	CosteMejorCombinacion = Optimo->Coste;
-	CostePeorCombinacion = 0; // ??????????????????????? l'he inicialitzat a 0 pq sino no entrave al if de sota
+
 	//CostePeorCombinacion = Optimo->Coste;
-	if(numThread==0){
-		mostrarGlobals = 1;
-	}
+
 	for (Combinacion=PrimeraCombinacion; Combinacion<=UltimaCombinacion; Combinacion++)
 	{
+		pthread_mutex_lock(&Mutex);
+		GlobEstCombinaciones++;
+		pthread_mutex_unlock(&Mutex);
 
     	clock_t start = clock();	//inicio del tiempo para calcular cuanto tarda el thread a realizar las tareas
 //    	printf("\tC%d -> \t",Combinacion);
 		Coste = EvaluarCombinacionListaArboles(Combinacion, &numCombValidas, &costeCombValidas, &mejoresArboles, &mejorArbolesComb,\
-			&peorArboles, &peorArbolesComb);
+			&peorArboles, &peorArbolesComb, &PeorCombinacion, &CostePeorCombinacion);
 		//printf("%i\n", numCombValidas );
 		if ( Coste < CosteMejorCombinacion )
 		{
 			CosteMejorCombinacion = Coste;
 			MejorCombinacion = Combinacion;
 //      	printf("***");
-		}else if(Coste > CostePeorCombinacion){
-
-			CostePeorCombinacion = Coste;
-			PeorCombinacion = Combinacion;
-
 		}
 
-		pthread_mutex_lock(&Mutex);
-		GlobEstCombinaciones++;
-		pthread_mutex_unlock(&Mutex);
+
 
 		if((Combinacion%S)==0){
 			ConvertirCombinacionToArbolesTalados(MejorCombinacion, &OptimoParcial);
@@ -485,10 +493,10 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 		cont++;
 		if (cont==Mcomb) //si el thread llega a la combinación M, mostrar estadisticas y desbalanceo
 		{
-			pthread_mutex_lock(&Mutex);
+			/*pthread_mutex_lock(&Mutex);
 			actualizar_est_globales(MejorCombinacion,PeorCombinacion,numCombValidas, costeCombValidas, CostePeorCombinacion, CosteMejorCombinacion, \
     			mejoresArboles, mejorArbolesComb, peorArboles, peorArbolesComb);
-			pthread_mutex_unlock(&Mutex);
+			pthread_mutex_unlock(&Mutex);*/
 
 			if(numThread==0){
 				printf("Soc el fill numero i soc el que mana %i\n", numThread);
@@ -529,42 +537,8 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			
 		}
 	}
-	
-	pthread_mutex_lock(&Mutex);
-	
-	if (CosteMejorCombinacion<min_cost)
-	{
-		min_cost = CosteMejorCombinacion;
-		bestComb = MejorCombinacion;
-	}
-	
-	pthread_mutex_unlock(&Mutex);	
 }
-void actualizar_est_globales(int mejor,int peor, int validas, int CosteTotal, int CostePeorCombinacion, int CosteMejorCombinacion, int mejorArboles,\
-	int mejorArbolesComb, int peorArboles, int peorArbolesComb){
 
-	if (CosteMejorCombinacion<GlobEstMejorCoste)
-	{
-		GlobEstMejorCoste = CosteMejorCombinacion;
-		GlobEstMejorCosteCombinacion =  mejor;
-	}
-	else if (CostePeorCombinacion>GlobEstPeorCoste)
-	{
-		GlobEstPeorCoste = CostePeorCombinacion;
-		GlobEstPeorCosteCombinacion =  peor;
-	}
-	if (mejorArboles<GlobEstMejorArboles)
-	{
-		GlobEstMejorArboles = mejorArboles;
-		GlobEstMejorArbolesCombinacion =  mejorArbolesComb;
-	}
-	else if (peorArboles>GlobEstPeorArboles)
-	{
-		GlobEstPeorArboles = peorArboles;
-		GlobEstPeorArbolesCombinacion =  peorArbolesComb;
-	}
-
-}
 void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int validas, int CosteTotal, int CostePeorCombinacion, int CosteMejorCombinacion, int mejorArboles,\
 	int mejorArbolesComb, int peorArboles, int peorArbolesComb){
 	
@@ -578,10 +552,12 @@ void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int val
 	
 }
 int mostrar_estadistiques_globales(){
-	sleep(1);GlobEstCombInvalidas = GlobEstCombinaciones - GlobEstCombValidas;
+	sleep(1);
+
+	GlobEstCombInvalidas = GlobEstCombinaciones - GlobEstCombValidas;
 	printf("++++++++++++++++++++++++++++ESTADISTICAS GLOBAAAAAALES THREAD NUMERO +++++++++++++++++++++++++++++++\n");
 	printf("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
-	printf("++ Eval Comb: %d \tValidas: %d \tInvalidas: %d\tCoste Validas: %.3f\n", GlobEstCombinaciones, GlobEstCombValidas, GlobEstCombInvalidas, (float)3/(float)GlobEstCombValidas);
+	printf("++ Eval Comb: %d \tValidas: %d \tInvalidas: %d\tCoste Validas: %.3f\n", GlobEstCombinaciones, GlobEstCombValidas, GlobEstCombInvalidas, (float)GlobEstCosteTotal/(float)GlobEstCombValidas);
 	printf("++ Mejor Comb (coste): %d Coste: %.3f  \tPeor Comb (coste): %d Coste: %.3f\n",GlobEstMejorCosteCombinacion, GlobEstMejorCoste, GlobEstPeorCosteCombinacion, GlobEstPeorCoste);
 	printf("++ Mejor Comb (árboles): %d Arboles: %d  \tPeor Comb (árboles): %d Arboles %d\n",GlobEstMejorArbolesCombinacion, GlobEstMejorArboles, GlobEstPeorArbolesCombinacion, GlobEstPeorArboles);
 	printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
@@ -605,13 +581,14 @@ void threadmeslent(double time, int numThread){
 }
 
 int EvaluarCombinacionListaArboles(int Combinacion, int *numCombValidas, int *costeCombValidas, int *mejoresArboles, int *mejorArbolesComb,\
-	int *peoresArboles, int *peoresArbolesComb)
+	int *peoresArboles, int *peoresArbolesComb, int *PeorCombinacion, int *CostePeorCombinacion)
 {
 	TVectorCoordenadas CoordArboles, CercaArboles;
 	TListaArboles CombinacionArboles, CombinacionArbolesTalados;
 
 	int NumArboles, NumArbolesTalados, PuntosCerca, CosteCombinacion;
 	int combValidas=*numCombValidas, costeVal=*costeCombValidas, mejArboles = *mejoresArboles, mejorArbComb = *mejorArbolesComb;
+	int peorcomb = *PeorCombinacion, costepeorComb = *CostePeorCombinacion;
 	int peorArboles = *peoresArboles, peorArbolesComb = *peoresArbolesComb;
 	float LongitudCerca, MaderaArbolesTalados;
 
@@ -645,13 +622,38 @@ if (DDebug) printf("\tCoste:%d",DMaximoCoste);
 	CosteCombinacion = CalcularCosteCombinacion(CombinacionArbolesTalados);
 if (DDebug) printf("\tCoste:%d",CosteCombinacion);
 
+	//estadisticas globales//
+	pthread_mutex_lock(&Mutex);
+	GlobEstCombValidas++;
+	GlobEstCosteTotal+=CosteCombinacion;
+
+	if (CosteCombinacion<GlobEstMejorCoste)
+	{
+		GlobEstMejorCoste = CosteCombinacion;
+		GlobEstMejorCosteCombinacion =  Combinacion;
+	}
+	else if (CosteCombinacion>GlobEstPeorCoste)
+	{
+		GlobEstPeorCoste = CosteCombinacion;
+		GlobEstPeorCosteCombinacion =  Combinacion;
+	}
+	if (NumArboles<GlobEstMejorArboles)
+	{
+		GlobEstMejorArboles = NumArboles;
+		GlobEstMejorArbolesCombinacion =  Combinacion;
+	}
+	else if (NumArboles>GlobEstPeorArboles)
+	{
+		GlobEstPeorArboles = NumArboles;
+		GlobEstPeorArbolesCombinacion =  Combinacion;
+	}
+	pthread_mutex_unlock(&Mutex);
+	/////////////////////////////////////////
+
+	/////////////////////////////////////////
 	//estadisticas parciales de cada thread//
 	combValidas++;
 	costeVal=costeVal+CosteCombinacion;
-
-	pthread_mutex_lock(&Mutex);
-	GlobEstCombValidas++;
-	pthread_mutex_unlock(&Mutex);
 	
 	if(NumArboles<mejArboles){
 		mejArboles = NumArboles;
@@ -660,13 +662,21 @@ if (DDebug) printf("\tCoste:%d",CosteCombinacion);
 		peorArboles = NumArboles;
 		peorArbolesComb = Combinacion;
 	}
+	if(CosteCombinacion > costepeorComb){
+			costepeorComb = CosteCombinacion;
+			peorcomb = Combinacion;
+	}
 	*mejoresArboles = mejArboles;
 	*numCombValidas = combValidas;
 	*costeCombValidas = costeVal;
 	*mejorArbolesComb = mejorArbComb;
 	*peoresArboles = peorArboles;
 	*peoresArbolesComb = peorArbolesComb;
+	*PeorCombinacion = peorcomb;
+	*CostePeorCombinacion = costepeorComb;
 	////////////////////////////////////////
+
+
 	return CosteCombinacion;
 }
 
