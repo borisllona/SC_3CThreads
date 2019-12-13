@@ -97,6 +97,8 @@ int numThreadLento;
 //numero total de threads//
 int NumTotalThreads=0;
 
+//contador global para hacer el "join"
+int globalCount = 0;
 
 //Estadisticas globales//
 int GlobEstCombinaciones, GlobEstCombValidas, GlobEstCombInvalidas;
@@ -308,6 +310,7 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 		exit(1);
 	}
 	printf("NUM THREADS, %i\n", NumTotalThreads );
+	
 	pthread_mutex_init(&Mutex,NULL);
 	pthread_cond_init(&CondPartial,NULL);
 	pthread_barrier_init(&Barrera,NULL,NumTotalThreads);
@@ -336,15 +339,17 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 		}
 
 	}
-	
-	for( thread = 0; thread<NumTotalThreads; thread++){
+
+
+	//pthread_barrier_wait(&Barrera);
+	/*for( thread = 0; thread<NumTotalThreads; thread++){
 		
 		if(pthread_join(Tids[thread], NULL)){ //sincronitzacion de todos los threads i guardar valor de retorno a combParcial
 			perror("Error join threads");
 			exit(1);
 		}
 		//combParciales[thread] = *combParcial; //guardamos en el array el valor retornado de cada thread
-	}
+	}*/
 	pthread_mutex_destroy(&Mutex);
 	pthread_cond_destroy(&CondPartial);
 	pthread_barrier_destroy(&Barrera);
@@ -498,18 +503,7 @@ void CalcularCombinacionOptima(PtrRang Rangs)
     			mejoresArboles, mejorArbolesComb, peorArboles, peorArbolesComb);
 			pthread_mutex_unlock(&Mutex);*/
 
-			if(numThread==0){
-				printf("Soc el fill numero i soc el que mana %i\n", numThread);
-				mostrar_estadistiques_globales();
-				pthread_cond_broadcast(&CondPartial);		
-			}else{
-				pthread_mutex_lock(&Mutex);
-				printf("Soc el fill numero i m'estic esperant %i\n", numThread);
-				pthread_cond_wait(&CondPartial,&Mutex);
-				pthread_mutex_unlock(&Mutex);
-				
-			}
-			
+
 			//ConvertirCombinacionToArbolesTalados(MejorCombinacion, &OptimoParcial);
 	
 			clock_t end = clock();	//final del tiempo que ha tardado el thread en realizar las tareas.
@@ -527,6 +521,18 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 
 			pthread_barrier_wait(&Barrera); //Esperamos a que todos los threads lleguen a la barrera para seguir
 
+			/*if(numThread==0){
+				printf("Soc el fill numero i soc el que mana %i\n", numThread);
+				mostrar_estadistiques_globales();
+				pthread_cond_broadcast(&CondPartial);		
+			}else{
+				pthread_mutex_lock(&Mutex);
+				printf("Soc el fill numero i m'estic esperant %i\n", numThread);
+				pthread_cond_wait(&CondPartial,&Mutex);
+				pthread_mutex_unlock(&Mutex);
+				
+			}*/
+			
 
 			sem_wait(&SemMutex); //sincronizamos con un semaforo para ractualizar la variable global de tiempo_mas_lento
 			tiempo_mas_lento = 0;	
@@ -537,6 +543,17 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			
 		}
 	}
+	pthread_mutex_lock(&Mutex);
+	globalCount++;
+	pthread_cond_signal(&CondPartial);
+	pthread_mutex_unlock(&Mutex);
+
+	pthread_mutex_lock(&Mutex);
+	while(globalCount < NumTotalThreads){
+		printf("%i\n", globalCount );
+		pthread_cond_wait(&CondPartial,&Mutex);
+	}
+	pthread_mutex_unlock(&Mutex);
 }
 
 void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int validas, int CosteTotal, int CostePeorCombinacion, int CosteMejorCombinacion, int mejorArboles,\
