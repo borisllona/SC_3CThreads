@@ -98,8 +98,8 @@ int numThreadLento;
 int NumTotalThreads=0;
 
 //contador global para hacer el "join"
-int globalCount = 0;
-
+int contadorSincro = 0;
+int sincronizado = 0;
 //Estadisticas globales//
 int GlobEstCombinaciones, GlobEstCombValidas, GlobEstCombInvalidas;
 long GlobEstCosteTotal;
@@ -340,16 +340,12 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 
 	}
 
+	pthread_mutex_lock(&Mutex);
+	while(contadorSincro < NumTotalThreads){
+		pthread_cond_wait(&CondPartial,&Mutex);
+	}
+	pthread_mutex_unlock(&Mutex);
 
-	//pthread_barrier_wait(&Barrera);
-	/*for( thread = 0; thread<NumTotalThreads; thread++){
-		
-		if(pthread_join(Tids[thread], NULL)){ //sincronitzacion de todos los threads i guardar valor de retorno a combParcial
-			perror("Error join threads");
-			exit(1);
-		}
-		//combParciales[thread] = *combParcial; //guardamos en el array el valor retornado de cada thread
-	}*/
 	pthread_mutex_destroy(&Mutex);
 	pthread_cond_destroy(&CondPartial);
 	pthread_barrier_destroy(&Barrera);
@@ -361,11 +357,16 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 	//min_cost = cercaCostMinim(combParciales, &index); //buscamos el minimo coste de todas las posibles soluciones de combParciales
 	int combOpt = GlobEstMejorCosteCombinacion; //la combinacion optima sera la que se encuentre en el index devuelto por la funcion cercaCostMin
 	int min_cost = GlobEstMejorCoste;
+	GlobEstCombValidas--;
+
+
 
 	ConvertirCombinacionToArbolesTalados(combOpt, &OptimoParcial);
 	printf("\rOptimo %d-> Coste %d, %d Arboles talados:", combOpt, min_cost, OptimoParcial.NumArboles);
 	MostrarArboles(OptimoParcial);
 	printf("\n");
+
+	mostrar_estadistiques_globales();
 
 	if (min_cost == Optimo->Coste)
 		return false;  // No se ha encontrado una combinacin mejor.
@@ -377,7 +378,6 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 	NumArboles = ConvertirCombinacionToArboles(combOpt, &CombinacionArboles);
 	ObtenerListaCoordenadasArboles(CombinacionArboles, CoordArboles);
 	PuntosCerca = chainHull_2D( CoordArboles, NumArboles, CercaArboles );
-
 	Optimo->LongitudCerca = CalcularLongitudCerca(CercaArboles, PuntosCerca);
 	MaderaArbolesTalados = CalcularMaderaArbolesTalados(*Optimo);
 	Optimo->MaderaSobrante = MaderaArbolesTalados - Optimo->LongitudCerca;
@@ -387,9 +387,10 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 	free(Tids); //Liberear memoria Tids 
 	free(Rangs); //Liberar memoria Rangs
 	//free(combParcial);
-	GlobEstCombValidas--;
-	mostrar_estadistiques_globales();
+
 	return true;
+	
+	
 }
 
 void InicializarEstadisticas()
@@ -498,41 +499,26 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 		cont++;
 		if (cont==Mcomb) //si el thread llega a la combinación M, mostrar estadisticas y desbalanceo
 		{
-			/*pthread_mutex_lock(&Mutex);
-			actualizar_est_globales(MejorCombinacion,PeorCombinacion,numCombValidas, costeCombValidas, CostePeorCombinacion, CosteMejorCombinacion, \
-    			mejoresArboles, mejorArbolesComb, peorArboles, peorArbolesComb);
-			pthread_mutex_unlock(&Mutex);*/
-
-
-			//ConvertirCombinacionToArbolesTalados(MejorCombinacion, &OptimoParcial);
-	
+				
 			clock_t end = clock();	//final del tiempo que ha tardado el thread en realizar las tareas.
 			double cpu_time = ((double) (end - start)) / CLOCKS_PER_SEC;
 
 			pthread_mutex_lock(&Mutex);
-			threadmeslent(cpu_time, numThread);
+			threadmeslent(cpu_time, numThread);	//buscamos el thread más lento a partir del tiempo registrado
 			pthread_mutex_unlock(&Mutex);
 
 			pthread_mutex_lock(&Mutex);
     		mostrar_estadistiques(numThread,Combinacion-PrimeraCombinacion+1,MejorCombinacion,PeorCombinacion,numCombValidas, costeCombValidas, CostePeorCombinacion, CosteMejorCombinacion, \
-    			mejoresArboles, mejorArbolesComb, peorArboles, peorArbolesComb);
+    			mejoresArboles, mejorArbolesComb, peorArboles, peorArbolesComb);	//mostramos estadisticas parciales de cada thread
 			mostrar_desbalanceo(cpu_time, numThread);
 			pthread_mutex_unlock(&Mutex);
 
 			pthread_barrier_wait(&Barrera); //Esperamos a que todos los threads lleguen a la barrera para seguir
 
-			/*if(numThread==0){
-				printf("Soc el fill numero i soc el que mana %i\n", numThread);
+			if(numThread==0){
 				mostrar_estadistiques_globales();
-				pthread_cond_broadcast(&CondPartial);		
-			}else{
-				pthread_mutex_lock(&Mutex);
-				printf("Soc el fill numero i m'estic esperant %i\n", numThread);
-				pthread_cond_wait(&CondPartial,&Mutex);
-				pthread_mutex_unlock(&Mutex);
-				
-			}*/
-			
+			}	
+
 
 			sem_wait(&SemMutex); //sincronizamos con un semaforo para ractualizar la variable global de tiempo_mas_lento
 			tiempo_mas_lento = 0;	
@@ -543,23 +529,19 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			
 		}
 	}
+	//una vez han terminado los threads incrementan la variable contadorSincro para controlar des de la clase principal si han terminado
+	//Realiza la funcion del join
 	pthread_mutex_lock(&Mutex);
-	globalCount++;
-	pthread_cond_signal(&CondPartial);
+	contadorSincro++;
+	pthread_cond_signal(&CondPartial);	//manda la señal una vez el thread ha incrementado el valor de la variable
 	pthread_mutex_unlock(&Mutex);
 
-	pthread_mutex_lock(&Mutex);
-	while(globalCount < NumTotalThreads){
-		printf("%i\n", globalCount );
-		pthread_cond_wait(&CondPartial,&Mutex);
-	}
-	pthread_mutex_unlock(&Mutex);
 }
 
 void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int validas, int CosteTotal, int CostePeorCombinacion, int CosteMejorCombinacion, int mejorArboles,\
 	int mejorArbolesComb, int peorArboles, int peorArbolesComb){
 	
-	printf("++++++++++++++++++++++++++++ESTADISTICAS PARCIALES THREAD NUMERO %i +++++++++++++++++++++++++++++++\n", numThread);
+	printf("++++++++++++++++++++++++++++ESTADISTICAS PARCIALES THREAD NUMERO %i ++++++++++++++++++++++++++++++", numThread);
 	printf("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
 	printf("++ Eval Comb: %i \tValidas: %i \tInvalidas: %i\tCoste Validas: %.3f\n", evalued, validas, evalued-validas, (float)CosteTotal/(float)validas);
 	printf("++ Mejor Comb (coste): %i Coste: %i  \tPeor Comb (coste): %i Coste: %i\n",mejor, CosteMejorCombinacion, peor, CostePeorCombinacion);
@@ -569,11 +551,10 @@ void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int val
 	
 }
 int mostrar_estadistiques_globales(){
-	sleep(1);
-
+	
 	GlobEstCombInvalidas = GlobEstCombinaciones - GlobEstCombValidas;
-	printf("++++++++++++++++++++++++++++ESTADISTICAS GLOBAAAAAALES THREAD NUMERO +++++++++++++++++++++++++++++++\n");
-	printf("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+	printf("++++++++++++++++++++++++++++++++++ ESTADISTICAS GLOBALES ++++++++++++++++++++++++++++++++++");
+	printf("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
 	printf("++ Eval Comb: %d \tValidas: %d \tInvalidas: %d\tCoste Validas: %.3f\n", GlobEstCombinaciones, GlobEstCombValidas, GlobEstCombInvalidas, (float)GlobEstCosteTotal/(float)GlobEstCombValidas);
 	printf("++ Mejor Comb (coste): %d Coste: %.3f  \tPeor Comb (coste): %d Coste: %.3f\n",GlobEstMejorCosteCombinacion, GlobEstMejorCoste, GlobEstPeorCosteCombinacion, GlobEstPeorCoste);
 	printf("++ Mejor Comb (árboles): %d Arboles: %d  \tPeor Comb (árboles): %d Arboles %d\n",GlobEstMejorArbolesCombinacion, GlobEstMejorArboles, GlobEstPeorArbolesCombinacion, GlobEstPeorArboles);
