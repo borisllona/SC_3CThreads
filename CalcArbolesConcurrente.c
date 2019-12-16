@@ -116,7 +116,7 @@ bool CalcularCercaOptima(PtrListaArboles Optimo);
 int cercaCostMinim(int d[], int *j);
 void OrdenarArboles();
 void CalcularCombinacionOptima(PtrRang Rangs);
-void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int validas, int CosteTotal, int PeorCombinacion, int MejorCombinacion, int mejoresArboles,\
+void mostrar_estadistiques_parciales(int numThread,int evalued,int mejor,int peor, int validas, int CosteTotal, int PeorCombinacion, int MejorCombinacion, int mejoresArboles,\
 	int mejorArbolesComb, int peorArboles, int peorArbolesComp);
 int mostrar_estadistiques_globales();
 void mostrar_desbalanceo(double tiempo, int numThread);
@@ -353,13 +353,11 @@ bool CalcularCercaOptima(PtrListaArboles Optimo)
 
 	printf("\n");
 	printf("Evaluacion Combinaciones posibles: \n");
-	int index = 0;
-	//min_cost = cercaCostMinim(combParciales, &index); //buscamos el minimo coste de todas las posibles soluciones de combParciales
+
 	int combOpt = GlobEstMejorCosteCombinacion; //la combinacion optima sera la que se encuentre en el index devuelto por la funcion cercaCostMin
 	int min_cost = GlobEstMejorCoste;
+
 	GlobEstCombValidas--;
-
-
 
 	ConvertirCombinacionToArbolesTalados(combOpt, &OptimoParcial);
 	printf("\rOptimo %d-> Coste %d, %d Arboles talados:", combOpt, min_cost, OptimoParcial.NumArboles);
@@ -454,7 +452,6 @@ void OrdenarArboles()
 
 void CalcularCombinacionOptima(PtrRang Rangs) 
 {
-	/*TODO: mostrar estadisties, per parametre M, parcials, desbalanceo(guardar el mes lent i restar), implementar condicionals*/
 
 	int Combinacion,  CosteMejorCombinacion, CostePeorCombinacion=0,PrimeraCombinacion, UltimaCombinacion;
 	int  MejorCombinacion=0, PeorCombinacion=0;
@@ -469,7 +466,6 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 	numThread = Rangs->numThread;
 	CosteMejorCombinacion = Optimo->Coste;
 
-	//CostePeorCombinacion = Optimo->Coste;
 
 	for (Combinacion=PrimeraCombinacion; Combinacion<=UltimaCombinacion; Combinacion++)
 	{
@@ -508,14 +504,14 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 			pthread_mutex_unlock(&Mutex);
 
 			pthread_mutex_lock(&Mutex);
-    		mostrar_estadistiques(numThread,Combinacion-PrimeraCombinacion+1,MejorCombinacion,PeorCombinacion,numCombValidas, costeCombValidas, CostePeorCombinacion, CosteMejorCombinacion, \
+    		mostrar_estadistiques_parciales(numThread,Combinacion-PrimeraCombinacion+1,MejorCombinacion,PeorCombinacion,numCombValidas, costeCombValidas, CostePeorCombinacion, CosteMejorCombinacion, \
     			mejoresArboles, mejorArbolesComb, peorArboles, peorArbolesComb);	//mostramos estadisticas parciales de cada thread
 			mostrar_desbalanceo(cpu_time, numThread);
 			pthread_mutex_unlock(&Mutex);
 
 			pthread_barrier_wait(&Barrera); //Esperamos a que todos los threads lleguen a la barrera para seguir
 
-			if(numThread==0){
+			if(numThread==0){				//EL thread 0 muestra las estadisticas globales
 				mostrar_estadistiques_globales();
 			}	
 
@@ -538,7 +534,7 @@ void CalcularCombinacionOptima(PtrRang Rangs)
 
 }
 
-void mostrar_estadistiques(int numThread,int evalued,int mejor,int peor, int validas, int CosteTotal, int CostePeorCombinacion, int CosteMejorCombinacion, int mejorArboles,\
+void mostrar_estadistiques_parciales(int numThread,int evalued,int mejor,int peor, int validas, int CosteTotal, int CostePeorCombinacion, int CosteMejorCombinacion, int mejorArboles,\
 	int mejorArbolesComb, int peorArboles, int peorArbolesComb){
 	
 	printf("++++++++++++++++++++++++++++ESTADISTICAS PARCIALES THREAD NUMERO %i ++++++++++++++++++++++++++++++", numThread);
@@ -673,7 +669,6 @@ if (DDebug) printf("\tCoste:%d",CosteCombinacion);
 	*PeorCombinacion = peorcomb;
 	*CostePeorCombinacion = costepeorComb;
 	////////////////////////////////////////
-
 
 	return CosteCombinacion;
 }
